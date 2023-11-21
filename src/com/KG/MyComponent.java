@@ -6,7 +6,6 @@ import java.awt.*;
 public abstract class MyComponent extends JComponent {
     boolean focus;
     Color color;
-    public Point editPoint = new Point();
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
@@ -16,11 +15,15 @@ public abstract class MyComponent extends JComponent {
     public abstract void setFocus(boolean focus);
     public abstract String showInfo();
 
-    public abstract void moveTo(int x, int y);
+    public abstract void move(int x, int y);
     public abstract void mirror(int x, int y);
+    public abstract void rotateCentre(double corn);
+    public abstract void rotate(int x, int y, int angle);
+    public abstract void scale (Point pointCentre, double scaleValue);
 
-    public abstract boolean inhere(int coefX, int coefY);
-    public abstract boolean inhere(FocusRectangle focusRectangle);
+    public abstract boolean contains(int coefX, int coefY);
+    public abstract boolean contains(FocusRectangle focusRectangle);
+
 
 
 }

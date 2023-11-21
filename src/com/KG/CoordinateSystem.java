@@ -11,19 +11,16 @@ public class CoordinateSystem extends JComponent {
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
         Graphics2D g_ = (Graphics2D) g;
-        g_.setColor(Color.blue);
+        g_.setColor(new Color(77, 137, 198));
         g_.setStroke(new BasicStroke(1));
         g_.drawLine(x - width, y, x + width, y);//ось х
-
         g_.drawLine(x, y - height, x, y + height);//ось у
-    }
+     }
 
     public static Point systemCoordToMyCoord(Point systemPoint){
-        Point myCoord = new Point(systemPoint.x - x, systemPoint.y - y);
-        return myCoord;
+        return new Point(systemPoint.x - x, systemPoint.y - y);
     }
     public static Point myCoordToSystemCoord(Point myCoord){
-        Point systemPoint = new Point(myCoord.x + x, myCoord.y + y);
-        return systemPoint;
+        return new Point(myCoord.x + x, myCoord.y + y);
     }
 }

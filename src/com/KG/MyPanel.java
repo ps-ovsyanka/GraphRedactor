@@ -3,26 +3,29 @@ package com.KG;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
-import java.util.ArrayList;
-
+import java.awt.geom.CubicCurve2D;
+import java.util.HashSet;
+import static com.KG.CoordinateSystem.*;
+import static java.lang.Math.*;
 
 public class MyPanel extends JPanel {
     CoordinateSystem coordinateSystem = new CoordinateSystem();
-    ArrayList<MyLine> lines = new ArrayList<>();
-    ArrayList<MyPoint> points = new ArrayList<>();
-    public MyLine currentLine = null;
-    public Point currentPoint = null;
-    public ArrayList<MyComponent> focus = new ArrayList<>();
-    public ArrayList<MyComponent> components = new ArrayList<>();
+    public Point editPoint = null;
+    public HashSet<MyComponent> focus = new HashSet<>();
+    public HashSet<MyComponent> components = new HashSet<>();
+    public HashSet<CubicCurve2D> splines = new HashSet<>();
 
     public MainFrame mainFrame;
     FocusRectangle focusRectangle;
 
     public MyPanel(){
-        setBackground(Color.black);
+        setBackground(Color.lightGray);
         initPopupMenu();
         addListeners();
+
         setSize(1000,1000);
+        add(new MyPoint(100, 150));
+
     }
 
     private void addListeners() {
@@ -30,34 +33,16 @@ public class MyPanel extends JPanel {
 
             @Override
             public void mousePressed(MouseEvent e) {
-                currentPoint = new Point(e.getX(), e.getY());
+                editPoint = new Point(e.getX(), e.getY());
                 if (e.getButton() == MouseEvent.BUTTON1 & getCursor().getType() != Cursor.MOVE_CURSOR){
                     focusRectangle = new FocusRectangle();
-                    focusRectangle.x1 = currentPoint.x;
-                    focusRectangle.y1 = currentPoint.y;
-                    focusRectangle.x2 = currentPoint.x;
-                    focusRectangle.y2 = currentPoint.y;
-                    /*if (getCursor().getType() != Cursor.DEFAULT_CURSOR) {
-                        if (focusLine!=null) {
-                            focusLine.setBackground(Color.white);
-                            focusLine.editPoint = new Point(e.getX(), e.getY());
-                        }
+                    focusRectangle.x1 = editPoint.x;
+                    focusRectangle.y1 = editPoint.y;
+                    focusRectangle.x2 = editPoint.x;
+                    focusRectangle.y2 = editPoint.y;
 
-                        for (MyLine l: lines) {
-                            if (l.BelongToLine(e.getX(), e.getY())) {
-                                setFocusLine(l);
-                            }
-                        }
-                    } else {
-                        currentLine = new MyLine(e.getX(), e.getY(), e.getX(), e.getY());
-                        setFocusLine(currentLine);
-                    }*/
-
-                } else if (e.getButton() == MouseEvent.BUTTON1 & getCursor().getType() == Cursor.MOVE_CURSOR) {
-                    for (MyComponent c: focus) {
-                        c.editPoint.x = e.getX();
-                        c.editPoint.y = e.getY();
-                    }
+                } else if (e.getButton() == MouseEvent.BUTTON3) {
+                    setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
                 }
                 repaint();
             }
@@ -69,15 +54,15 @@ public class MyPanel extends JPanel {
                     focusRectangle.y2 = e.getY();
                     clearFocus();
                     for (MyComponent c: components) {
-                        if (c.inhere(focusRectangle))
+                        if (c.contains(focusRectangle))
                             addToFocus(c);
                     }
                     focusRectangle = null;
                 }
-                if (currentPoint.equals(e.getPoint())) {//проверка клика
+                if (editPoint.equals(e.getPoint()) & getCursor().getType() != Cursor.MOVE_CURSOR) {//проверка клика
                     boolean f = false;//флаг попадания объектов в фокус
                     for (MyComponent c: components) {
-                        if (c.inhere(e.getX(), e.getY())) {
+                        if (c.contains(e.getX(), e.getY())) {
                             setFocus(c);
                             f = true;
                         }
@@ -105,16 +90,20 @@ public class MyPanel extends JPanel {
                 } else {
                     if (getCursor().getType() == Cursor.MOVE_CURSOR) {
                         for (MyComponent c: focus) {
-                            c.moveTo(e.getX(), e.getY());
+                            c.move( e.getX() - editPoint.x, e.getY() - editPoint.y);
+                        }
+                    } else if (getCursor().getType() == Cursor.CROSSHAIR_CURSOR) {
+                        Point localEditPoint = systemCoordToMyCoord(editPoint);
+                        Point localPoint = systemCoordToMyCoord(e.getPoint());
+                        double angle = atan2(localPoint.y, localPoint.x) - atan2(localEditPoint.y, localEditPoint.x);
+
+                        for (MyComponent c: focus) {
+                            c.rotateCentre(angle);
                         }
                     }
+                    editPoint = new Point(e.getX(), e.getY());
                 }
-                /*if (getCursor().getType() != Cursor.DEFAULT_CURSOR & focusLine != null) {
-                    focusLine.MoveTo(e.getX(), e.getY());
-                } else if (currentLine != null) {
-                    currentLine.setX2(e.getX());
-                    currentLine.setY2(e.getY());
-                }*/
+
                 repaint();
             }
 
@@ -122,7 +111,7 @@ public class MyPanel extends JPanel {
             public void mouseMoved(MouseEvent e) {
                 CheckCursor(e.getX(), e.getY());
                 for (MyComponent component: components) {
-                    if (component.inhere(e.getX(), e.getY())) {
+                    if (component.contains(e.getX(), e.getY())) {
                         if (component.isFocus())
                             setCursor(new Cursor(Cursor.MOVE_CURSOR));
                         else
@@ -133,13 +122,58 @@ public class MyPanel extends JPanel {
                 }
             }
         });
+
+        addMouseWheelListener(new MouseWheelListener() {
+            @Override
+            public void mouseWheelMoved(MouseWheelEvent e) {
+                System.out.println(e.getScrollType());
+
+                if (e.getWheelRotation() > 0) {
+                    for (MyComponent c: focus) {
+                        c.scale(new Point(), 0.9);
+                    }
+                } else {
+                    for (MyComponent c: focus) {
+                        c.scale(new Point(), 1.1);
+                    }
+                }
+
+                CheckEquationLine();
+                repaint();
+            }
+        });
     }
 
     public void clearFocus() {
         for (MyComponent c: focus) {
             c.setFocus(false);
         }
+        CheckEquationLine();
         focus.clear();
+    }
+
+    public void setFocus(MyComponent component){
+        for (MyComponent c: focus) {
+            c.setFocus(false);
+        }
+        focus.clear();
+        component.setFocus(true);
+        addToFocus(component);
+        CheckEquationLine();
+        repaint();
+    }
+
+    public void addToFocus(MyComponent component){
+        component.setFocus(true);
+        if (component.getClass().equals(MyLine.class)) {
+            MyLine l = (MyLine) component;
+            focus.add(l.p1);
+            focus.add(l.p2);
+        } else {
+            focus.add(component);
+        }
+        CheckEquationLine();
+        repaint();
     }
 
     public void CheckCursor(int x, int y){
@@ -149,7 +183,17 @@ public class MyPanel extends JPanel {
 
     public void CheckEquationLine(){
         if (focus.size() == 1) {
-            mainFrame.equationLine.setText("   Info:  " + focus.get(0).showInfo());
+            MyComponent c = (MyComponent) (focus.toArray()[0]);
+            mainFrame.equationLine.setText("   Info:  " + c.showInfo());
+        } else if (focus.size() == 2){
+
+            for (MyComponent c: components)
+                if (c.getClass().equals(MyLine.class))
+                {
+                    Object[] arr = focus.toArray();
+                    if (((MyLine) c).p1.equals(arr[0]) & ((MyLine) c).p2.equals(arr[1]) | ((MyLine) c).p1.equals(arr[1]) & ((MyLine) c).p2.equals(arr[0]))
+                        mainFrame.equationLine.setText("   Info:  " + c.showInfo());
+                }
         } else
             mainFrame.equationLine.setText("");
         mainFrame.toolbarMode.repaint();
@@ -157,31 +201,17 @@ public class MyPanel extends JPanel {
 
     public void paintComponent(Graphics g) {
         super.paintComponent(g);
+        coordinateSystem.paintComponent(g);
         for (MyComponent component: components) {
             component.paintComponent(g);
         }
         if (focusRectangle != null) {
             focusRectangle.paintComponent(g);
         }
-        coordinateSystem.paintComponent(g);
-    }
-
-
-    public void setFocus(MyComponent component){
-        for (MyComponent c: focus) {
-            c.setFocus(false);
+        for (CubicCurve2D component: splines) {
+            ((Graphics2D) g).draw(component);
         }
-        focus.clear();
-        component.setFocus(true);
-        focus.add(component);
-        CheckEquationLine();
-        repaint();
-    }
 
-    public void addToFocus(MyComponent component){
-        component.setFocus(true);
-        focus.add(component);
-        repaint();
     }
 
     public void addPoint(int x, int y) {
@@ -190,25 +220,55 @@ public class MyPanel extends JPanel {
         setFocus(p);
     }
 
-    public void addLine(MyComponent p1, MyComponent p2) {
-        MyLine l = new MyLine((MyPoint) p1, (MyPoint) p2);
+    public void addLine(MyPoint p1, MyPoint p2) {
+        MyLine l = new MyLine( p1, p2);
         components.add(l);
         setFocus(l);
     }
+
+    public void addSpline(HashSet<MyComponent> arr){
+        for(MyComponent c: arr)
+            if (c.getClass().equals(MyLine.class)) return;
+
+
+
+        CubicCurve2D curve = new CubicCurve2D.Double(((MyPoint)(focus.toArray()[0])).getX(), ((MyPoint)(focus.toArray()[0])).getY(),
+                ((MyPoint)(focus.toArray()[1])).getX(), ((MyPoint)(focus.toArray()[1])).getY(),
+                ((MyPoint)(focus.toArray()[2])).getX(), ((MyPoint)(focus.toArray()[2])).getY(),
+                ((MyPoint)(focus.toArray()[3])).getX(), ((MyPoint)(focus.toArray()[3])).getY());
+        splines.add(curve);
+    }
+
+    public  void delete(HashSet<MyComponent> arrComponent) {
+
+        for (MyComponent c: arrComponent)
+            if (c.getClass().equals(MyPoint.class)) {
+                for(MyComponent l: components)
+                    if (l.getClass().equals(MyLine.class)) {
+                        MyLine newL = (MyLine) l;
+                        if (newL.p1.equals(c) | newL.p2.equals(c)) {
+                            components.remove(l);
+                            break;
+                        }
+                    }
+                components.remove(c);
+            }
+    }
+
 
     public void initPopupMenu(){
         JPopupMenu menu = new JPopupMenu();
         Action menuActionAddPoint = new AbstractAction("Add point") {
             @Override
             public void actionPerformed(ActionEvent e) {
-                addPoint(currentPoint.x, currentPoint.y);
+                addPoint(editPoint.x, editPoint.y);
                 repaint();
             }
         };
         Action menuActionCreateLine = new AbstractAction("Create line") {
             @Override
             public void actionPerformed(ActionEvent e) {
-                addLine(focus.get(0), focus.get(1));
+                addLine((MyPoint) (focus.toArray()[0]), (MyPoint) (focus.toArray()[1]));
                 repaint();
             }
         };
@@ -233,17 +293,17 @@ public class MyPanel extends JPanel {
         Action menuActionDelete = new AbstractAction("Delete") {
             @Override
             public void actionPerformed(ActionEvent e) {
-                for (MyComponent c: focus) {
-                    components.remove(c);
-                }
+                delete(focus);
                 repaint();
             }
         };
+
         menu.add(menuActionAddPoint);
         menu.add(menuActionCreateLine);
         menu.add(menuActionMirrorX);
         menu.add(menuActionMirrorY);
         menu.add(menuActionDelete);
+
         setComponentPopupMenu(menu);
     }
 }

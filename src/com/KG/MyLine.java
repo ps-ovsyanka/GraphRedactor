@@ -1,10 +1,10 @@
 package com.KG;
 
+//import javax.sound.sampled.Line;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.awt.geom.Ellipse2D;
 import java.awt.geom.Line2D;
 
 import static java.lang.Math.abs;
@@ -12,6 +12,7 @@ import static java.lang.Math.abs;
 
 public class MyLine extends MyComponent {
     MyPoint p1, p2;
+    //Line2D line = new Line2D.Double(1,4,5,6);
 
     public int A;
     public int B;
@@ -22,7 +23,7 @@ public class MyLine extends MyComponent {
 
         this.p1 = p1;
         this.p2 = p2;
-        color = Color.CYAN;
+        color = new Color(196, 105, 30);
 
         addMouseListener(new MouseAdapter() {
 
@@ -62,9 +63,6 @@ public class MyLine extends MyComponent {
         p2.setFocus(focus);
     }
 
-
-
-
     //public Dimension getPreferredSize() { return new Dimension(abs((int)(getX1() - getX2())), abs((int) (getY1() - getY2()))); }
 
     public double getX1() { return p1.getX(); }
@@ -79,38 +77,53 @@ public class MyLine extends MyComponent {
     public void setY1 (double y1) { line = new Line2D.Double(getX1(), y1, getX2(), getY2()); }
     public void setY2 (double y2) { line = new Line2D.Double(getX1(), getY1(), getX2(), y2); }*/
 
-    public void moveTo(int x, int y){
-        p1.editPoint = editPoint;
-        p2.editPoint = editPoint;
-        editPoint = new Point(x,y);
-
-        p1.moveTo(x, y);
-        p2.moveTo(x, y);
+    @Override
+    public void move(int x, int y){
+        return;
     }
 
     @Override
     public void mirror(int coefX, int coefY) {
-        p1.mirror(coefX, coefY);
-        p2.mirror(coefX, coefY);
+        return;
+    }
+
+    //x` = x0 + (x-x0)COS - (y-y0)SIN
+    //y` = y0 + (x-x0)SIN + (y-y0)COS
+    @Override
+    public void rotateCentre(double angle) {
+
     }
 
     @Override
-    public boolean inhere(int x, int y) {
-        return (abs((x - getX1())*(getY2()-getY1())-(y - getY1())*(getX2()-getX1())) < 1000
-                & (x <= getX1() & x >= getX2() | x <= getX2() & x >= getX1() ));
+    public void rotate(int x, int y, int angle) {
+
+    }
+
+    public void scale (Point pointCentre, double scaleValue){return;}
+
+    @Override
+    public boolean contains(int x, int y) {
+        return !p1.contains(x, y) & !p2.contains(x, y) &
+                (abs((x - getX1())*(getY2()-getY1())-(y - getY1())*(getX2()-getX1())) < 1000
+                & (x <= getX1() & x >= getX2() | x <= getX2() & x >= getX1()));
     }
 
     @Override
-    public boolean inhere(FocusRectangle focusRectangle) {
-        return focusRectangle.inhere(p1.getX(), p1.getY()) & focusRectangle.inhere(p2.getX(), p2.getY());
+    public boolean contains(FocusRectangle focusRectangle) {
+        return focusRectangle.contains(p1.getX(), p1.getY()) & focusRectangle.contains(p2.getX(), p2.getY());
     }
 
 
     ///y1-y2,x2-x1,x1*y2-x2*y1
     public String showInfo() {
-        A = (int) (getY1() - getY2());
-        B = (int) (getX2() - getX1());
-        C = (int) (getX1()*getY2() - getX2()*getY1());
+        int x1 = CoordinateSystem.systemCoordToMyCoord(new Point((int) getX1(), (int) getY1())).x;
+        int x2 = CoordinateSystem.systemCoordToMyCoord(new Point((int) getX2(), (int) getY2())).x;
+        int y1 = CoordinateSystem.systemCoordToMyCoord(new Point((int) getX1(), (int) getY1())).y;
+        int y2 = CoordinateSystem.systemCoordToMyCoord(new Point((int) getX2(), (int) getY2())).y;
+
+        A = (y1 - y2);
+        B = (x2 - x1);
+        C = (x1*y2 - x2*y1);
         return "   " + A + "X + " + B + "Y + " + C + " = 0";
     }
 
